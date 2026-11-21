@@ -1,1 +1,87 @@
-
+import os
+import subprocess
+import sys
+import tempfile
+ 
+BODY = '''def read_attendance(path):
+    pass
+'''
+STATS = '''def calculate_stats(records):
+    pass
+'''
+REPORT = '''def write_report(stats, output_path):
+    pass
+'''
+MAIN_BODY = '''
+def main():
+    records = read_attendance("attendance.txt")
+    stats = calculate_stats(records)
+    write_report(stats, "report.csv")
+ 
+if __name__ == "__main__":
+    main()
+'''
+ 
+def write(root, name, text):
+    path = os.path.join(root, name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+ 
+def tree(root):
+    for folder, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d != "__pycache__")
+        depth = folder[len(root):].count(os.sep)
+        if folder != root:
+            print("    " * depth + os.path.basename(folder) + "/")
+        for name in sorted(files):
+            print("    " * (depth + 1) + name)
+ 
+def run(root, script):
+    result = subprocess.run([sys.executable, script], cwd=root,
+                            capture_output=True, text=True)
+    print("    run", script, "-> exit code", result.returncode,
+          result.stderr.strip()[-80:])
+ 
+base = tempfile.mkdtemp()
+ 
+# (a) One script
+a = os.path.join(base, "a_one_script")
+write(a, "attendance_app.py", "# attendance_app.py\n" + BODY + "\n" + STATS + "\n" + REPORT + MAIN_BODY)
+ 
+# (b) One module imported by a main script
+b = os.path.join(base, "b_one_module")
+write(b, "attendance_utils.py", BODY + "\n" + STATS + "\n" + REPORT)
+write(b, "main.py", "import attendance_utils as au\n\ndef main():\n"
+      "    records = au.read_attendance(\"attendance.txt\")\n"
+      "    stats = au.calculate_stats(records)\n"
+      "    au.write_report(stats, \"report.csv\")\n\n"
+      "if __name__ == \"__main__\":\n    main()\n")
+ 
+# (c) Three modules in one folder
+c = os.path.join(base, "c_three_modules")
+write(c, "attendance_project/reader.py", BODY)
+write(c, "attendance_project/stats.py", STATS)
+write(c, "attendance_project/report.py", REPORT)
+write(c, "main.py", "from attendance_project.reader import read_attendance\n"
+      "from attendance_project.stats import calculate_stats\n"
+      "from attendance_project.report import write_report\n" + MAIN_BODY)
+ 
+# (d) Package named attendance/
+d = os.path.join(base, "d_package")
+write(d, "attendance/__init__.py", "")
+write(d, "attendance/reader.py", BODY)
+write(d, "attendance/stats.py", STATS)
+write(d, "attendance/report.py", REPORT)
+write(d, "main.py", "from attendance.reader import read_attendance\n"
+      "from attendance.stats import calculate_stats\n"
+      "from attendance.report import write_report\n" + MAIN_BODY)
+ 
+for label, root, script in [("(a) One script", a, "attendance_app.py"),
+                            ("(b) One module + main", b, "main.py"),
+                            ("(c) Three modules in one folder", c, "main.py"),
+                            ("(d) Package attendance/", d, "main.py")]:
+    print(label)
+    tree(root)
+    run(root, script)
+    print()
