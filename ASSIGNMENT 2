@@ -1,1 +1,39 @@
+calls = 0
+ 
+def ways_naive(n):
+    global calls
+    calls += 1
+    if n <= 1:
+        return 1
+    return ways_naive(n - 1) + ways_naive(n - 2)
+ 
+# Revised design: keep only the previous two results
+def ways_loop(n):
+    if n <= 1:
+        return 1
+    a = 1
+    b = 1
+    for i in range(2, n + 1):
+        c = a + b
+        a = b
+        b = c
+    return b
+ 
+# A. Diagnose and E. Validate the redesign
+print("DIAGNOSIS AND VALIDATION")
+print("n | answer | naive calls | loop additions | results match")
+for n in [10, 20, 25, 30]:
+    calls = 0
+    slow = ways_naive(n)
+    fast = ways_loop(n)
+    additions = n - 1
+    print(n, "|", slow, "|", calls, "|", additions, "|",
+          "Yes" if slow == fast else "No")
+ 
+# Design objective: n = 1000 without a recursion-depth error
+print("\nOBJECTIVE CHECK")
+result = ways_loop(1000)
+print("n=1000 completed without RecursionError")
+print("Digits in result:", len(str(result)))
+print("Loop additions for n=1000:", 1000 - 1)
 
