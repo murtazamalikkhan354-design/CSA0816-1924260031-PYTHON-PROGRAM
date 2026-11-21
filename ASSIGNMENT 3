@@ -1,1 +1,126 @@
+import time
+ 
+def normalize_phone(phone):
+    if not phone:
+        return ""
+    phone = "".join(ch for ch in str(phone) if ch.isdigit())
+    if len(phone) == 12 and phone.startswith("91"):
+        phone = phone[2:]
+    if len(phone) == 11 and phone.startswith("0"):
+        phone = phone[1:]
+    return phone
+ 
+def normalize_name(name):
+    return " ".join(str(name or "").lower().split())
+ 
+def merge_contacts(contacts):
+    groups = {}
+    phone_index = {}
+    email_index = {}
+ 
+    for i, contact in enumerate(contacts):
+        name = normalize_name(contact.get("name", ""))
+        phone = normalize_phone(contact.get("phone", ""))
+        email = str(contact.get("email") or "").strip().lower()
+ 
+        matches = set()
+        if phone and phone in phone_index:
+            matches.add(phone_index[phone])
+        if email and email in email_index:
+            matches.add(email_index[email])
+ 
+        if not matches:
+            group_id = i
+            groups[group_id] = {
+                "names": set(), "phones": set(), "emails": set()
+            }
+        else:
+            group_id = min(matches)
+            for old_id in matches:
+                if old_id != group_id:
+                    groups[group_id]["names"].update(groups[old_id]["names"])
+                    groups[group_id]["phones"].update(groups[old_id]["phones"])
+                    groups[group_id]["emails"].update(groups[old_id]["emails"])
+                    del groups[old_id]
+ 
+        if name:
+            groups[group_id]["names"].add(name)
+        if phone:
+            groups[group_id]["phones"].add(phone)
+            phone_index[phone] = group_id
+        if email:
+            groups[group_id]["emails"].add(email)
+            email_index[email] = group_id
+ 
+        for p in groups[group_id]["phones"]:
+            phone_index[p] = group_id
+        for e in groups[group_id]["emails"]:
+            email_index[e] = group_id
+ 
+    return list(groups.values())
+ 
+contacts = [
+    {"name": "Dr. Ravi", "phone": "+91 98400 12345",
+     "email": "ravi@gmail.com"},
+    {"name": "ravi kumar", "phone": "9840012345",
+     "email": "ravi@gmail.com"},
+    {"name": "Priya", "phone": "9876543210",
+     "email": "priya@gmail.com"},
+    {"name": "Ravi", "phone": "+91-98400-12345",
+     "email": ""},
+    {"name": "Arun", "phone": "", "email": "arun@gmail.com"},
+    {"name": "Arun Kumar", "phone": "9123456780",
+     "email": "arun@gmail.com"},
+    {"name": "Priya", "phone": "9988776655",
+     "email": "priya.work@gmail.com"},
+    {"name": "Unknown", "phone": "", "email": ""}
+]
+ 
+result = merge_contacts(contacts)
+print("MERGED CONTACTS")
+for i, person in enumerate(result, start=1):
+    print("\nContact", i)
+    print("Names:", sorted(person["names"]))
+    print("Phones:", sorted(person["phones"]))
+    print("Emails:", sorted(person["emails"]))
+ 
+# Same name, different numbers must remain separate
+same_name = merge_contacts([
+    {"name": "Priya", "phone": "9876543210", "email": "p1@mail.com"},
+    {"name": "Priya", "phone": "9123456780", "email": "p2@mail.com"}
+])
+print("\nSAME NAME, DIFFERENT PEOPLE:", len(same_name))
+ 
+# Missing fields
+missing = merge_contacts([
+    {"name": "No Details", "phone": "", "email": ""},
+    {"name": "No Details", "phone": "", "email": ""}
+])
+print("MISSING IDENTIFIERS KEPT SEPARATE:", len(missing))
+ 
+# Benchmark dictionary merging
+def generate_contacts(n):
+    return [{"name": "Person " + str(i),
+             "phone": "900" + str(i).zfill(10),
+             "email": "person" + str(i) + "@mail.com"}
+            for i in range(n)]
+ 
+print("\nTIMING EXPERIMENT (seconds)")
+for n in [1000, 100000]:
+    data = generate_contacts(n)
+    start = time.perf_counter()
+    merged = merge_contacts(data)
+    elapsed = time.perf_counter() - start
+    print(n, "contacts:", round(elapsed, 5),
+          "seconds; output groups:", len(merged))
+ 
+# Pairwise comparison count for alternative design
+for n in [1000, 100000]:
+    comparisons = n * (n - 1) // 2
+    print("Pairwise comparisons for", n, "contacts:", comparisons)
+
+
+
+ 
+ 
 
