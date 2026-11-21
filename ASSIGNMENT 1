@@ -1,1 +1,52 @@
+BASE_RATE = 30.00
+FAT_STEP_VALUE = 0.40
+SNF_STEP_VALUE = 0.30
+BONUS_RATE = 0.50
+ 
+def rate_per_litre(fat, snf, month):
+    """Calculate milk rate."""
+    base = BASE_RATE
+    fat_value = FAT_STEP_VALUE
+ 
+    if month >= 4 and month <= 6:
+        base = 32.00
+        fat_value = 0.45
+ 
+    fat_steps = round((fat - 3.5) * 10)
+    snf_steps = round((snf - 8.5) * 10)
+ 
+    rate = base + fat_steps * fat_value
+    rate += snf_steps * SNF_STEP_VALUE
+ 
+    return round(rate, 2)
+ 
+def bonus(total_litres):
+    """Calculate ten-day bonus."""
+    if total_litres > 500:
+        return round(total_litres * BONUS_RATE, 2)
+    return 0.00
+ 
+def payout(litres, fat, snf, month):
+    """Calculate payment for milk supplied."""
+    rate = rate_per_litre(fat, snf, month)
+    return round(litres * rate, 2)
+ 
+def ten_day_total(payments, total_litres):
+    """Calculate total payment including bonus."""
+    return round(sum(payments) + bonus(total_litres), 2)
+ 
+payments = [payout(510, 4.20, 8.70, 5)]
+total = ten_day_total(payments, 510)
+ 
+print("Milk payment:", payments[0])
+print("Bonus:", bonus(510))
+print("Total payment:", total)
+ 
+# Evidence table
+print("\nTESTS")
+print("Standard rate (3.50 fat, 8.50 SNF, May):", rate_per_litre(3.50, 8.50, 5))
+print("Seasonal rate (4.20 fat, 8.70 SNF, May):", rate_per_litre(4.20, 8.70, 5))
+print("Supply of 500 litres, bonus:", bonus(500))
+print("Supply of 510 litres, bonus:", bonus(510))
+print("Total payment for 510 litres:", total)
 
